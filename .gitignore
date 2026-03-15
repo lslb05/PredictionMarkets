@@ -1,0 +1,14 @@
+.env
+*.key
+*.pem
+__pycache__/
+.venv/
+daviglib.txt
+venv/
+.env
+.env.local
+.env.*.local
+
+venv/
+node_modules/
+__pycache__/

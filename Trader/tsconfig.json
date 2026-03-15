@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",         /* Versão moderna do JS */
+    "module": "commonjs",       /* Padrão do Node.js */
+    "strict": true,             /* <--- O SEGREDO: Ativa a proteção máxima contra erros */
+    "esModuleInterop": true,    /* Permite importar bibliotecas antigas */
+    "skipLibCheck": true,       /* Pula checagem de arquivos de definição (mais rápido) */
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",         /* Onde o código compilado vai ficar */
+    "resolveJsonModule": true   /* Permite importar arquivos .json */
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

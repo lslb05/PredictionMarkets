@@ -1,0 +1,30 @@
+{
+  "name": "typescript",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/strategies/maker_dashboard.ts",
+    "dev": "ts-node --watch src/strategies/maker_dashboard.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@polymarket/clob-client": "^5.2.1",
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.16.0",
+    "uuid": "^13.0.0",
+    "ws": "^8.19.0"
+  }
+}
