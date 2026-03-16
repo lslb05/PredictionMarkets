@@ -45,7 +45,6 @@ export class KalshiApi {
         const method = 'POST';
         const clientOrderId = uuidv4();
 
-        // 1. Monta o Payload Base
         const payload: any = {
             action: params.action,
             client_order_id: clientOrderId,
@@ -56,11 +55,10 @@ export class KalshiApi {
             expiration_ts: null
         };
 
-        // 2. CORREÇÃO CRÍTICA: Define o campo de preço correto baseando-se no lado
         if (params.side === 'yes') {
-            payload.yes_price = params.price; // Preço em Centavos
+            payload.yes_price = params.price;
         } else {
-            payload.no_price = params.price;  // Preço em Centavos
+            payload.no_price = params.price;  
         }
 
         const headers = this.auth.getHeaders(method, `/trade-api/v2${path}`);
@@ -69,8 +67,8 @@ export class KalshiApi {
             const response = await this.client.post(path, payload, { headers });
 
             if (response.status !== 201) {
-                console.error(`❌ [KalshiAPI] Erro payload: ${JSON.stringify(payload)}`);
-                console.error(`❌ [KalshiAPI] Resposta: ${JSON.stringify(response.data)}`);
+                console.error(` [KalshiAPI] Erro payload: ${JSON.stringify(payload)}`);
+                console.error(` [KalshiAPI] Resposta: ${JSON.stringify(response.data)}`);
                 throw new Error(response.data?.message || 'Falha ao criar ordem');
             }
 

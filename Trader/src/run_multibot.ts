@@ -1,52 +1,35 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-
-// Imports Kalshi
 import { KalshiAuth } from './exchanges/kalshi/auth';
 import { KalshiApi } from './exchanges/kalshi/api';
 import { KalshiStream } from './exchanges/kalshi/stream_ws';
 import { KalshiBookProcessor } from './exchanges/kalshi/book_processor';
 import { KalshiFillMonitor } from './execution/kalshi_fill_monitor';
-
-// Bot Imports
 import { BotEngine } from './execution/bot_engine';
 import { MARKETS } from './markets_config';
-
-// Polymarket Imports
 import { PolymarketAuth } from './exchanges/polymarket/auth'; 
 import { PolymarketStream, MarketState } from './exchanges/polymarket/stream_multi'; // Verifique se o nome do arquivo está certo
 import { PolymarketExecutor } from './exchanges/polymarket/executor';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-//const CONFIG = {
-  //  KEY_FILE: 'daviglib.txt',
-    //USE_REAL_HEDGE: true
-//};
-
 const CONFIG = {
     KEY_FILE: process.env.KALSHI_API_KEYFILE ,
     USE_REAL_HEDGE: true
 };
 
-// --- MAPAS DE ROTEAMENTO ---
 const botsByKalshiTicker = new Map<string, BotEngine>();
 const botsByPolyToken = new Map<string, BotEngine>();
 
-// --- CACHE DE ESTADO DE MERCADO ---
 const marketStateCache = new Map<string, MarketState>();
 
 async function main() {
     console.log(`🚀 INICIANDO ORQUESTRADOR MULTI-MERCADO (${MARKETS.length} ativos)...`);
-
-    // 1. AUTH KALSHI
     const keyPath = path.join(__dirname, '../', CONFIG.KEY_FILE!);
     const privateKey = fs.readFileSync(keyPath, 'utf8').trim();
     const kAuth = new KalshiAuth({ apiKey: process.env.KALSHI_API_KEY!, privateKey });
     const kApi = new KalshiApi(kAuth);
-
-    // 2. AUTH POLYMARKET
     let polyExecutor: PolymarketExecutor | undefined;
     if (CONFIG.USE_REAL_HEDGE) {
         try {

@@ -15,40 +15,26 @@ export class KalshiBookProcessor {
         this.ticker = ticker;
     }
 
-    // MUDANÇA 1: Não chamamos mais 'start' nem 'connect' aqui.
-    // Apenas guardamos quem vai receber os updates.
     public setCallback(onUpdate: (state: MarketState) => void) {
         this.onUpdateCallback = onUpdate;
     }
-
-    // MUDANÇA 2: Este método será chamado manualmente pelo run_bot.ts
-    // toda vez que chegar uma mensagem no WebSocket central.
     public processMessage(msg: any) {
-        // Verificação básica se há dados
         if (!msg || !msg.msg) return;
-
-        // Filtro de Ticker: Só processa se for do nosso ativo
         if (msg.msg.market_ticker !== this.ticker) return;
-
-        // Roteamento
         if (msg.type === 'orderbook_delta') {
             this.handleDelta(msg.msg);
         } else if (msg.type === 'orderbook_snapshot') {
-            // console.log(`📸 [Kalshi] Snapshot recebido.`);
             this.handleSnapshot(msg.msg);
         }
     }
 
     private handleSnapshot(data: any) {
         this.yesBids.clear();
-        this.noBids.clear();
-        
+        this.noBids.clear();       
         const yes = data.yes || [];
         for (let i = 0; i < yes.length; i++) this.yesBids.set(yes[i][0], yes[i][1]);
-        
         const no = data.no || [];
         for (let i = 0; i < no.length; i++) this.noBids.set(no[i][0], no[i][1]);
-        
         this.emitState();
     }
 
@@ -66,22 +52,21 @@ export class KalshiBookProcessor {
     private emitState() {
         if (!this.onUpdateCallback) return;
 
-        // --- LADO YES (BIDS) ---
+
         const sortedYesBids = Array.from(this.yesBids.entries())
-            .sort((a, b) => b[0] - a[0]) // Maior preço primeiro
+            .sort((a, b) => b[0] - a[0])
             .slice(0, 3)
             .map(([p, s]) => ({ price: p / 100, size: s }));
 
-        // --- LADO NO (BIDS) ---
-        // Mantendo sua lógica correta de mapear NO Bids para "Asks" no objeto
+
         const sortedNoBids = Array.from(this.noBids.entries())
             .sort((a, b) => b[0] - a[0]) 
             .slice(0, 3)
             .map(([p, s]) => ({ price: p / 100, size: s }));
 
         this.onUpdateCallback({
-            bids: sortedYesBids, // YES BIDS
-            asks: sortedNoBids,  // NO BIDS (Raw)
+            bids: sortedYesBids, 
+            asks: sortedNoBids,  
             spread: 0, 
             timestamp: Date.now()
         });

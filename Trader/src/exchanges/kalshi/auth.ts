@@ -1,4 +1,4 @@
-import { ExchangeCredentials } from '../../types'; // Ajuste o caminho conforme sua estrutura
+import { ExchangeCredentials } from '../../types'; 
 import * as crypto from 'crypto';
 
 export class KalshiAuth {
@@ -13,7 +13,6 @@ export class KalshiAuth {
         if (!this.credentials.apiKey) {
             throw new Error('Kalshi requires an apiKey (Key ID) for authentication');
         }
-        // No Kalshi, a privateKey geralmente vem como string (PEM) ou arquivo lido antes
         if (!this.credentials.privateKey) {
             throw new Error('Kalshi requires a privateKey (RSA Private Key) for authentication');
         }
@@ -32,9 +31,8 @@ export class KalshiAuth {
     }
 
     private signRequest(timestamp: string, method: string, path: string): string {
-        // O path deve incluir query params se houver, mas para assinatura básica é o path relativo
         const payload = `${timestamp}${method}${path}`;
-        
+       
         try {
             const signer = crypto.createSign('SHA256');
             signer.update(payload);
