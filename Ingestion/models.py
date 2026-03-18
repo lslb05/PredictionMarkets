@@ -32,19 +32,11 @@ async def get_engine():
     if not url: raise ValueError("DATABASE_URL not found in .env")
     return create_async_engine(url, echo=False)
 
-# ---------------------------------------------------------
-# A FUNÇÃO QUE FALTAVA (init_db)
-# ---------------------------------------------------------
 async def init_db():
-    """Cria o schema 'core' e a tabela 'markets' se não existirem."""
     engine = await get_engine()
     
     async with engine.begin() as conn:
-        # 1. Cria o Schema 'core'
         await conn.execute(text("CREATE SCHEMA IF NOT EXISTS core;"))
-        
-        # 2. Cria as tabelas (markets) dentro do schema
         await conn.run_sync(Base.metadata.create_all)
-        
-    print("✅ Banco de core inicializado (Schema 'core' verificado).")
+       
     await engine.dispose()

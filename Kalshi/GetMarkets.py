@@ -5,7 +5,7 @@ import aiohttp
 import pandas as pd
 import sys
 
-# Ajuste de path (Mantido igual ao seu)
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(src_dir)
@@ -18,13 +18,13 @@ logger = logging.getLogger("KalshiExtract")
 class KalshiExtractor:
     def __init__(self):
         from Kalshi.utils import KalshiAuth
-        from dotenv import load_dotenv      
+        from dotenv import load_dotenv
         load_dotenv()
         self.base_url = "https://api.elections.kalshi.com"
         k_id = os.getenv("KALSHI_PROD_KEYID")
         k_file = os.getenv("KALSHI_API_KEY")
         if not k_id or not k_file:
-            raise ValueError("⚠️  Faltam credenciais no .env")      
+            raise ValueError("⚠️  Faltam credenciais no .env")
         if not os.path.isabs(k_file):
             k_file = os.path.join(os.getcwd(), k_file)
             
@@ -48,7 +48,6 @@ class KalshiExtractor:
         except Exception: return {}
 
     async def stream_data(self, min_vol=100, batch_size=5000):
-        logger.info(f"🚀 Streaming Kalshi (Vol Min: ${min_vol} | Buffer: {batch_size})...")       
         buffer_rows = []
         cursor = None
         
@@ -65,7 +64,7 @@ class KalshiExtractor:
                 try:
                     async with session.get(self.base_url + path, headers=headers, params=params) as resp:
                         if resp.status != 200: 
-                            print(f"❌ Erro API: {resp.status}")
+                            print(f"Erro API: {resp.status}")
                             break
                         
                         data = await resp.json()
@@ -110,7 +109,7 @@ class KalshiExtractor:
                             
                             yield df_batch
                             
-                            buffer_rows = [] # Limpa
+                            buffer_rows = [] 
 
                         if not cursor: break
                         await asyncio.sleep(0.05)

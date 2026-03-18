@@ -10,100 +10,58 @@ from EmbendingMercados import MarketEmbedder
 from Similaridade import MarketMatcher
 
 
-# ==============================================================================
-# PASSO 1: INGESTÃO (Async)
-# ==============================================================================
-async def step_1_ingestion():
-    print("\n" + "="*60)
-    print("📡 PASSO 1: INGESTÃO DE DADOS (Kalshi & Polymarket)")
-    print("="*60)
-    
+async def ingestion():
     loader = AsyncMarketLoader()
     await loader.init()
 
-    # --- Polymarket ---
-    print("\n🔹 [1/2] Polymarket: Baixando tudo...")
+    print("\n🔹 [1/2] Polymarket")
     try:
         t0 = time.time()
         poly = PolymarketExtractor()
         df_poly = await poly.get_data(min_vol=100)
-        print(f"   ↳ Download em {time.time()-t0:.2f}s. Salvando...")
         await loader.save_batch(df_poly, 'polymarket', chunk_size=1000)
         del df_poly
     except Exception as e:
-        print(f"   ❌ Erro Polymarket: {e}")
+        print(f"Erro Poly: {e}")
 
-    # --- Kalshi ---
-    print("\n🔹 [2/2] Kalshi: Streaming...")
+    print("[2/2] Kalshi")
     try:
         kalshi = KalshiExtractor()
         total_kalshi = 0
         async for df_batch in kalshi.stream_data(min_vol=10, batch_size=1000):
             await loader.save_batch(df_batch, 'kalshi')
             total_kalshi += len(df_batch)
-            print(f"   📦 Lote salvo! Total: {total_kalshi}")
-        print(f"   ✅ Kalshi finalizada. Total: {total_kalshi}")
     except Exception as e:
-        print(f"   ❌ Erro Kalshi: {e}")
+        print(f"Erro Kalshi: {e}")
 
     await loader.close()
 
-# ==============================================================================
-# PASSO 2: EMBEDDINGS (Sync)
-# ==============================================================================
-def step_2_embedding():
-    print("\n" + "="*60)
-    print("🧠 PASSO 2: GERAÇÃO DE EMBEDDINGS (Vetores)")
-    print("="*60)
-    
+def embedding():    
     embedder = MarketEmbedder()
     embedder.run()
 
-# ==============================================================================
-# PASSO 3: MATCHING (Sync)
-# ==============================================================================
-def step_3_matching():
-    print("\n" + "="*60)
-    print("🔎 PASSO 3: BUSCA DE SIMILARIDADE E RERANKING")
-    print("="*60)
-    
+def matching():
     matcher = MarketMatcher()
-    # Ajuste os thresholds conforme necessário
     matcher.run(threshold_similarity=0.75, threshold_rerank=0.0)
 
-# ==============================================================================
-# ORQUESTRADOR PRINCIPAL
-# ==============================================================================
 async def pipeline():
-    start_time = time.time()
-    print("🚀 INICIANDO PIPELINE DE DADOS PREDICTION MARKETS")
-    
-    # 0. Garante que o banco existe
+    start_time = time.time()   
     await init_db()
-
-    # 1. Roda Ingestão (Async)
-    await step_1_ingestion()
+    await ingestion()
     
-    # Pausa técnica para o banco respirar/commits finalizarem
     time.sleep(2) 
-
-    # 2. Roda Embeddings (Sync - roda numa thread separada ou direto pois é CPU bound)
-    # Como não é async, chamamos direto.
     try:
-        step_2_embedding()
+        embedding()
     except Exception as e:
-        print(f"❌ Falha no passo de Embeddings: {e}")
+        print(f"Erro Embeddings: {e}")
 
     time.sleep(1)
-
-    # 3. Roda Matcher (Sync)
     try:
-        step_3_matching()
+        matching()
     except Exception as e:
-        print(f"❌ Falha no passo de Matching: {e}")
+        print(f"Erro Matching: {e}")
 
-    elapsed = time.time() - start_time
-    print(f"\n🏁 PIPELINE COMPLETO EM {elapsed/60:.2f} MINUTOS.")
+    print(f"Finished in {(time.time() - start_time)/60:.2f} MINUTOS.")
 
 if __name__ == "__main__":
     if sys.platform == "win32":
@@ -111,5 +69,5 @@ if __name__ == "__main__":
     
     try:
         asyncio.run(pipeline())
-    except KeyboardInterrupt:
-        print("\n🛑 Pipeline interrompido pelo usuário.")
+    except Exception as e:
+        print(f"Erro no pipeline: {e}")
