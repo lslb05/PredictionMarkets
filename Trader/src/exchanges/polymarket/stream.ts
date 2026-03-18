@@ -44,7 +44,6 @@ export class PolymarketStream {
 
         this.ws.on('open', () => {
             console.log("✅ [PolyStream] Conectado.");
-            // Envia mensagem de inscrição
             const msg = { assets_ids: this.assetIds, type: "market" };
             this.ws?.send(JSON.stringify(msg));
         });
@@ -68,9 +67,6 @@ export class PolymarketStream {
     }
 
     private processEvent(event: any): boolean {
-        // CORREÇÃO: Não checar asset_id aqui em cima, pois varia por tipo de evento
-
-        // 1. TIPO: BOOK (Snapshot Inicial)
         if (event.event_type === "book") {
             if (!event.asset_id || !this.books.has(event.asset_id)) return false;
 
@@ -81,17 +77,15 @@ export class PolymarketStream {
             event.bids.forEach((x: any) => book.bids.set(parseFloat(x.price), parseFloat(x.size)));
             event.asks.forEach((x: any) => book.asks.set(parseFloat(x.price), parseFloat(x.size)));
             
-            // console.log(`📸 [Poly] Snapshot carregado para ${event.asset_id.slice(0,5)}`);
             return true;
         }
 
-        // 2. TIPO: PRICE_CHANGE (Atualizações em Tempo Real)
         if (event.event_type === "price_change") {
             const changes = event.price_changes || [];
             let updated = false;
 
             for (const change of changes) {
-                // AQUI verificamos o asset_id de cada mudança individual
+
                 if (!change.asset_id || !this.books.has(change.asset_id)) continue;
 
                 const book = this.books.get(change.asset_id)!;

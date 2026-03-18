@@ -21,13 +21,10 @@ export class KalshiFillMonitor {
         this.targetTicker = targetTicker;
     }
 
-    // REMOVIDO: connect() e start() que chamavam stream.connect
-    // NOVO: Apenas configura o callback localmente
     public setCallback(callback: (fill: FillEvent) => void) {
         this.onFillCallback = callback;
     }
 
-    // NOVO: Método para enviar a inscrição manualmente (será chamado pelo run_bot)
     public subscribe() {
         const subscribeMsg = {
             id: Math.floor(Math.random() * 100000),
@@ -38,15 +35,12 @@ export class KalshiFillMonitor {
         this.stream.send(subscribeMsg);
     }
 
-    // TORNAR PÚBLICO: O run_bot vai chamar isso manualmente
     public processMessage(msg: any) {
         if (msg.type === 'fill' && msg.msg) {
             const data = msg.msg;
-            // console.log(`⚡ FILL RAW: ${data.market_ticker} | Qtd: ${data.count}`);
 
             if (data.market_ticker !== this.targetTicker) return;
 
-            // Tratamento de preço
             let priceCents = 0;
             if (data.yes_price) priceCents = data.yes_price;
             else if (data.no_price) priceCents = data.no_price;

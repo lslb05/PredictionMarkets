@@ -4,12 +4,12 @@ import { PolymarketExecutor } from '../exchanges/polymarket/executor';
 import { FillEvent } from './kalshi_fill_monitor';
 
 export enum BotStatus {
-    IDLE = '🔵 IDLE',        
-    PLACING = '🟡 PLACING',  
-    WORKING = '🟢 WORKING',  
-    HEDGING = '🟣 HEDGING',  
-    CANCELLING = '🟠 CANCELLING', // <--- NOVO STATUS
-    STOPPED = '⚫ STOPPED'   
+    IDLE = '🔵 IDLE',
+    PLACING = '🟡 PLACING',
+    WORKING = '🟢 WORKING',
+    HEDGING = '🟣 HEDGING',
+    CANCELLING = '🟠 CANCELLING',
+    STOPPED = '⚫ STOPPED'
 }
 
 export interface BotState {
@@ -35,7 +35,6 @@ export class BotEngine {
     public readonly polyNoId: string;
     public readonly minProfit: number;
 
-    // Estado Interno
     private status: BotStatus = BotStatus.IDLE;
     private activeOrderId: string | null = null;
     private activeOrderPrice: number = 0;
@@ -44,12 +43,10 @@ export class BotEngine {
     
     private currentSpread: number = 0;
 
-    // Gestão de Risco
     private pendingHedgeQty: number = 0;
     private HEDGE_THRESHOLD = 5; 
     private isHedgingNow: boolean = false;
 
-    // Controle de Mira
     private targetSide: 'yes' | 'no' | null = null;
     private hedgeTokenId: string | null = null;
 
@@ -69,9 +66,6 @@ export class BotEngine {
         this.polyExecutor = polyExecutor;
     }
 
-    // =========================================================================
-    // 1. ON FILL
-    // =========================================================================
     public async onFill(fill: FillEvent) {
         if (fill.ticker !== this.ticker) return;
         console.log(`💧 FILL DETECTADO! ${fill.count} un.`);
@@ -79,23 +73,18 @@ export class BotEngine {
         this.checkAndTriggerHedge();
     }
 
-    // =========================================================================
-    // 2. ON TICK (Lógica: Seguidor Passivo)
-    // =========================================================================
     public async onTick(kState: MarketState, pYesState: MarketState, pNoState: MarketState) {
         if (this.status === BotStatus.STOPPED || this.status === BotStatus.CANCELLING) return;
 
-        // --- A) DADOS DO MERCADO ---
-        const kBidYes = kState.bids[0]?.price || 0;     
-        const pAskNo  = pNoState.asks[0]?.price || 1.00; 
-        const spreadYesBase = Number(((1.00 - (kBidYes + pAskNo)) * 100).toFixed(2)); 
+        const kBidYes = kState.bids[0]?.price || 0;
+        const pAskNo  = pNoState.asks[0]?.price || 1.00;
+        const spreadYesBase = Number(((1.00 - (kBidYes + pAskNo)) * 100).toFixed(2));
 
-        const kBidNo = kState.asks[0]?.price || 0;      
-        const pAskYes = pYesState.asks[0]?.price || 1.00; 
+        const kBidNo = kState.asks[0]?.price || 0;
+        const pAskYes = pYesState.asks[0]?.price || 1.00;
         const spreadNoBase = Number(((1.00 - (kBidNo + pAskYes)) * 100).toFixed(2));
 
-        // --- B) DECISÃO DE LADO ---
-        let marketFloor = 0; // O Bid que vamos copiar
+        let marketFloor = 0;
         let polyCost = 0;
 
         if (spreadYesBase > spreadNoBase) {
@@ -110,47 +99,42 @@ export class BotEngine {
             polyCost = pAskYes;
         }
 
-        // --- C) LÓGICA DE PREÇO (SIMPLIFICADA) ---
-        // Alvo: Exatamente o Bid do Mercado (Empatar)
         const floorCents = Math.round(marketFloor * 100);
         
-        // Calcula lucro se entrarmos nesse preço
         const passiveSpread = (1.00 - ((floorCents / 100) + polyCost)) * 100;
         
-        // Atualiza visual
+
         this.currentSpread = Number(passiveSpread.toFixed(2));
 
         let finalTargetPrice = 0;
 
-        // CONDIÇÃO ÚNICA: O Bid atual dá lucro?
-        // Se sim, copiamos. Se não, saímos.
         if (passiveSpread >= this.minProfit && floorCents > 0) {
             finalTargetPrice = floorCents;
         } else {
-            finalTargetPrice = 0; // Spread ruim
+            finalTargetPrice = 0;
         }
 
-        // --- D) EXECUÇÃO ---
+        
         const isTradeable = finalTargetPrice > 0;
 
-        // Atualiza Status Visual
+        
         if (!this.isHedgingNow) {
-            this.status = this.isHedgingNow ? BotStatus.HEDGING : 
+            this.status = this.isHedgingNow ? BotStatus.HEDGING :
                           (this.activeOrderId ? BotStatus.WORKING : BotStatus.IDLE);
         }
 
         if (isTradeable) {
-            // 1. Sem ordem -> Cria
+            
             if (!this.activeOrderId && this.status !== BotStatus.PLACING) {
                 await this.placeOrder(finalTargetPrice);
             }
-            // 2. Com ordem -> Preço mudou? Move.
+            
             else if (this.activeOrderId && this.activeOrderPrice !== finalTargetPrice) {
                 await this.cancelOrder(); 
             }
-            // 3. Com ordem e preço igual -> NÃO FAZ NADA (Mantém a posição na fila)
+            
         } else {
-            // Se não é negociável e tenho ordem aberta -> Cancela
+            
             if (this.activeOrderId) {
                 await this.cancelOrder();
             }
@@ -164,8 +148,8 @@ export class BotEngine {
     // =========================================================================
     private checkAndTriggerHedge() {
         if (
-            this.pendingHedgeQty >= this.HEDGE_THRESHOLD && 
-            !this.isHedgingNow && 
+            this.pendingHedgeQty >= this.HEDGE_THRESHOLD &&
+            !this.isHedgingNow &&
             this.polyExecutor &&
             this.hedgeTokenId
         ) {
@@ -205,8 +189,7 @@ export class BotEngine {
         this.status = BotStatus.PLACING;
         
         try {
-            // 👇 LOTE FIXO DE 5 (Pode aumentar depois)
-            const size = 5; 
+            const size = 5;
             const side = this.targetSide || 'yes';
             
             const res = await this.kApi.createOrder({
@@ -226,7 +209,7 @@ export class BotEngine {
                 this.status = BotStatus.WORKING;
                 console.log(`✨ [${side.toUpperCase()}] Ordem criada @ ${price}¢`);
             } else {
-                this.status = BotStatus.IDLE; 
+                this.status = BotStatus.IDLE;
             }
         } catch (e) {
             console.error("Erro Place:", e);
@@ -237,39 +220,29 @@ export class BotEngine {
     public async cancelOrder() {
         if (!this.activeOrderId) return;
         
-        // 1. Trava o robô para ninguém mexer
         this.status = BotStatus.CANCELLING;
         const idToCancel = this.activeOrderId;
 
         try {
-            // 2. Tenta cancelar na Kalshi
             await this.kApi.cancelOrder(idToCancel);
             
-            // 3. SUCESSO: Agora sim limpamos da memória
             console.log(`🗑️ Ordem ${idToCancel} cancelada com sucesso.`);
-            this.activeOrderId = null; 
+            this.activeOrderId = null;
             this.activeOrderPrice = 0;
             this.activeOrderSize = 0;
             this.status = BotStatus.IDLE;
 
         } catch (e: any) {
-            // 4. TRATAMENTO DE ERRO INTELIGENTE
             const errorMsg = e.message || JSON.stringify(e);
 
-            // Cenário A: A ordem já sumiu (foi executada ou já cancelada)
-            // A API geralmente retorna 404 ou "not found" ou "invalid order id"
             if (errorMsg.includes('not found') || errorMsg.includes('invalid') || errorMsg.includes('closed')) {
                 console.warn(`⚠️ Ordem ${idToCancel} não existe mais. Limpando memória.`);
                 this.activeOrderId = null;
                 this.activeOrderPrice = 0;
                 this.status = BotStatus.IDLE;
-            } 
-            // Cenário B: Erro de Rede / Timeout / Server Busy
+            }
             else {
                 console.error(`❌ Falha ao cancelar (Rede/API). Vamos tentar de novo no próximo tick.`);
-                // NÃO limpamos o activeOrderId!
-                // Voltamos para WORKING para que o onTick perceba que o preço está errado 
-                // e chame cancelOrder() novamente.
                 this.status = BotStatus.WORKING;
             }
         }

@@ -24,20 +24,19 @@ export class PolymarketExecutor {
             console.log(`   Qtd: ${quantity}`);
             console.log(`   Pagador: ${this.auth.getFunderAddress()}`);
 
-            const MAX_PRICE = 0.99; 
+            const MAX_PRICE = 0.99;
 
             const orderPayload = {
                 tokenID: tokenId,
-                price: MAX_PRICE, 
+                price: MAX_PRICE,
                 side: Side.BUY,
                 size: quantity,
-                orderType: OrderType.FOK 
+                orderType: OrderType.FOK
             } as any;
-         const response = await this.client.createAndPostOrder(orderPayload);
+            const response = await this.client.createAndPostOrder(orderPayload);
 
             console.log(`✅ [POLY] Resposta do Servidor:`, response);
             
-            // Verifica sucesso
             if (response && (response as any).success) {
                  return true;
             } else {

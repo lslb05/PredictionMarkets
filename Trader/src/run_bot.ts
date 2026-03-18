@@ -21,29 +21,26 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const CONFIG = {
     KALSHI_TICKER: 'KXFEDDECISION-26MAR-C25',
-    POLY_YES_ID: '62938043365772447095885755955446362343142416536419862840923032141775380249586', 
+    POLY_YES_ID: '62938043365772447095885755955446362343142416536419862840923032141775380249586',
     POLY_NO_ID:  '89036168105179001192755120118050209760422683300339582903158940882158509550672',
     KEY_FILE: process.env.KALSHI_API_KEYFILE,
     
-    // ⚙️ GATILHO DE SPREAD
     MIN_PROFIT_TO_OPEN: 3.9,
     
-    // ⚙️ EXECUÇÃO REAL
     USE_REAL_HEDGE: true
 };
 
 const fmtUSD = (n: number) => `$${n.toFixed(3)}`;
 const fmtQty = (n: number) => Math.floor(n).toString().padStart(5, ' ');
 
-// ⚠️ CORREÇÃO 1: Adicionado 'magenta' na tipagem e no objeto de cores
 const color = (txt: string, type: 'green' | 'red' | 'yellow' | 'cyan' | 'magenta' | 'reset') => {
-    const codes = { 
-        green: '\x1b[32m', 
-        red: '\x1b[31m', 
-        yellow: '\x1b[33m', 
-        cyan: '\x1b[36m', 
-        magenta: '\x1b[35m', // Nova cor
-        reset: '\x1b[0m' 
+    const codes = {
+        green: '\x1b[32m',
+        red: '\x1b[31m',
+        yellow: '\x1b[33m',
+        cyan: '\x1b[36m',
+        magenta: '\x1b[35m',
+        reset: '\x1b[0m'
     };
     return `${codes[type]}${txt}${codes.reset}`;
 };
@@ -87,9 +84,6 @@ async function main() {
 
     console.log("🔌 Conectando aos streams...");
 
-    // =========================================================================
-    // 🔗 ARQUITETURA MAESTRO
-    // =========================================================================
     const kStream = new KalshiStream(kAuth);
     const kProcessor = new KalshiBookProcessor(kStream, CONFIG.KALSHI_TICKER);
     const kFillMonitor = new KalshiFillMonitor(kStream, CONFIG.KALSHI_TICKER);
@@ -104,13 +98,10 @@ async function main() {
 
     setTimeout(() => {
         console.log("📨 Inscrevendo nos canais Kalshi...");
-        kStream.subscribe(CONFIG.KALSHI_TICKER); 
+        kStream.subscribe(CONFIG.KALSHI_TICKER);
         if (typeof kFillMonitor.subscribe === 'function') kFillMonitor.subscribe();
     }, 2500);
 
-    // =========================================================================
-    // 🔗 STREAMS POLYMARKET
-    // =========================================================================
     new PolymarketStream([CONFIG.POLY_YES_ID], CONFIG.POLY_YES_ID).connect(state => { pYesState = state; tick(); });
     new PolymarketStream([CONFIG.POLY_NO_ID], CONFIG.POLY_NO_ID).connect(state => { pNoState = state; tick(); });
 
@@ -145,33 +136,30 @@ async function main() {
         console.log(`🤖 BOT ARBITRAGEM (HEDGE ASSÍNCRONO) | ALVO: ${CONFIG.KALSHI_TICKER}`);
         console.log(`================================================================\n`);
 
-        // MONITOR
-        const sideTxt = s.targetSide === 'yes' ? 'LONG YES' : (s.targetSide === 'no' ? 'LONG NO' : '---');
-        console.log(`🎯 Oportunidade:     ${color(sideTxt, 'cyan')}`);
-        
-        const spreadVal = s.currentSpread.toFixed(2);
-        const metaVal = s.minProfit.toFixed(1);
-        const spreadColor: any = s.isConditionMet ? 'green' : 'red';
-        const statusMsg = s.isConditionMet ? "✅ DENTRO DA META" : "❌ FORA DA META";
+    const sideTxt = s.targetSide === 'yes' ? 'LONG YES' : (s.targetSide === 'no' ? 'LONG NO' : '---');
+    console.log(`🎯 Oportunidade:     ${color(sideTxt, 'cyan')}`);
+    
+    const spreadVal = s.currentSpread.toFixed(2);
+    const metaVal = s.minProfit.toFixed(1);
+    const spreadColor: any = s.isConditionMet ? 'green' : 'red';
+    const statusMsg = s.isConditionMet ? "✅ DENTRO DA META" : "❌ FORA DA META";
 
-        console.log(`💰 Spread Atual:     ${color(spreadVal + '¢', spreadColor)} (Meta: >= ${metaVal}¢)`);
-        console.log(`🚦 Condição:         ${statusMsg}`);
-        console.log(`----------------------------------------------------------------`);
+    console.log(`💰 Spread Atual:     ${color(spreadVal + '¢', spreadColor)} (Meta: >= ${metaVal}¢)`);
+    console.log(`🚦 Condição:         ${statusMsg}`);
+    console.log(`----------------------------------------------------------------`);
 
-        // BALDE
-        console.log(`🦅 GESTÃO DE RISCO (POLYMARKET)`);
-        const filled = Math.min(s.pendingHedgeQty, 5);
-        const bar = '█'.repeat(filled) + '░'.repeat(5 - filled);
-        let bucketColor: any = s.pendingHedgeQty > 0 ? 'yellow' : 'green';
-        if (s.pendingHedgeQty >= 5) bucketColor = 'red';
+    console.log(`🦅 GESTÃO DE RISCO (POLYMARKET)`);
+    const filled = Math.min(s.pendingHedgeQty, 5);
+    const bar = '█'.repeat(filled) + '░'.repeat(5 - filled);
+    let bucketColor: any = s.pendingHedgeQty > 0 ? 'yellow' : 'green';
+    if (s.pendingHedgeQty >= 5) bucketColor = 'red';
 
-        console.log(`   Balde de Hedge:   [${color(bar, bucketColor)}] ${s.pendingHedgeQty}/5`);
+    console.log(`   Balde de Hedge:   [${color(bar, bucketColor)}] ${s.pendingHedgeQty}/5`);
         
         // ⚠️ CORREÇÃO 2: Removemos 's.isHedgingNow' e confiamos no Enum HEDGING
         if (s.status === BotStatus.STOPPED) {
              console.log(`   AÇÃO:             ${color("⛔ ROBÔ PARADO (ERRO)", 'red')}`);
-        } else if (s.status === BotStatus.HEDGING) { 
-             // Se estiver hedgiando, o BotEngine já muda o status para HEDGING
+        } else if (s.status === BotStatus.HEDGING) {
              console.log(`   AÇÃO:             ${color("🟣 HEDGE EM ANDAMENTO (BACKGROUND)...", 'magenta')}`);
         } else if (s.pendingHedgeQty >= 5) {
              console.log(`   AÇÃO:             ${color("⚠️ PREPARANDO DISPARO...", 'yellow')}`);

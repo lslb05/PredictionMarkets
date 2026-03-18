@@ -14,7 +14,7 @@ export class KalshiStream {
     private isConnected: boolean = false;
     private isClosing: boolean = false;
     
-    // Controle de Reconexão
+
     private reconnectAttempts: number = 0;
     private readonly MAX_RECONNECTS = 10;
     private readonly BASE_DELAY_MS = 1000;
@@ -31,11 +31,10 @@ export class KalshiStream {
 
         console.log(`🔐 [KalshiWS] Conectando...`);
 
-        // OTIMIZAÇÃO: perMessageDeflate: false reduz latência de CPU
         this.ws = new WebSocket(WS_URL, {
             headers: headers,
             perMessageDeflate: false, 
-            skipUTF8Validation: true // Ganho marginal de performance
+            skipUTF8Validation: true
         } as any);
 
         this.ws.on('open', () => {
@@ -51,7 +50,7 @@ export class KalshiStream {
                     this.onMessageCallback(JSON.parse(data.toString()));
                 }
             } catch (e) {
-                // ignore
+
             }
         });
 
@@ -68,20 +67,14 @@ export class KalshiStream {
         if (this.isConnected) this.sendSubscribe(ticker);
     }
 
-    // =================================================================
-    // 👇 ADICIONE ISTO AQUI 👇
-    // =================================================================
     public send(data: any): void {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
         } else {
-            // console.warn("⚠️ [KalshiStream] Socket não está pronto para envio.");
-        }
+           }
     }
-    // =================================================================
-
+   
     private sendSubscribe(ticker: string): void {
-        // Usa o novo método send para evitar duplicação de lógica
         const payload = {
             id: Date.now(),
             cmd: 'subscribe',

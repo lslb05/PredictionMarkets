@@ -31,11 +31,10 @@ export class KalshiStream {
 
         console.log(`🔐 [KalshiWS] Conectando...`);
 
-        // OTIMIZAÇÃO: perMessageDeflate: false reduz latência de CPU
         this.ws = new WebSocket(WS_URL, {
             headers: headers,
-            perMessageDeflate: false, 
-            skipUTF8Validation: true // Ganho marginal de performance
+            perMessageDeflate: false,
+            skipUTF8Validation: true
         } as any);
 
         this.ws.on('open', () => {
@@ -60,48 +59,39 @@ export class KalshiStream {
         this.ws.on('close', () => this.handleDisconnect());
     }
 
-    // =================================================================
-    // 🔄 MUDANÇA 1: Aceita string ou string[]
-    // =================================================================
     subscribe(tickers: string | string[]): void {
         const list = Array.isArray(tickers) ? tickers : [tickers];
         let hasNew = false;
 
-        // Atualiza a lista interna de assinaturas ativas
         list.forEach(t => {
             if (!this.activeSubscriptions.has(t)) {
                 this.activeSubscriptions.add(t);
                 hasNew = true;
-                // console.log(`➕ [KalshiWS] Adicionando à lista: ${t}`);
             }
         });
 
-        // Se estiver conectado, envia o comando para a lista solicitada
         if (this.isConnected && list.length > 0) {
             this.sendSubscribe(list);
         }
     }
 
+
     public send(data: any): void {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
         } else {
-            // console.warn("⚠️ [KalshiStream] Socket não está pronto para envio.");
         }
     }
 
-    // =================================================================
-    // 🔄 MUDANÇA 2: Envia array no payload (Batch Subscribe)
-    // =================================================================
     private sendSubscribe(tickers: string[]): void {
         if (tickers.length === 0) return;
 
         const payload = {
             id: Date.now(),
             cmd: 'subscribe',
-            params: { 
-                channels: ['orderbook_delta', 'fill'], 
-                market_tickers: tickers // Envia todos de uma vez
+            params: {
+                channels: ['orderbook_delta', 'fill'],
+                market_tickers: tickers
             }
         };
         
@@ -109,9 +99,6 @@ export class KalshiStream {
         this.send(payload);
     }
 
-    // =================================================================
-    // 🔄 MUDANÇA 3: Reinscreve tudo de uma vez na reconexão
-    // =================================================================
     private resubscribe(): void {
         if (this.activeSubscriptions.size > 0) {
             const allTickers = Array.from(this.activeSubscriptions);

@@ -19,23 +19,16 @@ const color = (txt: string, type: 'green' | 'red' | 'yellow' | 'cyan' | 'reset')
 // ⚙️ CONFIGURAÇÃO DE TESTE
 // =============================================================================
 const CONFIG = {
-    KALSHI_TICKER: 'TEST-TICKER', 
-    
-    // 👇 CONFIRA SE ESTE É O ID DO TOKEN "YES" QUE VOCÊ QUER COMPRAR
-    POLY_YES_ID: '109876868437950584369987384406356259939519193117253465815665152916226511121427', 
-    
-    // O ID do "NO" (precisa existir para o bot iniciar, mas não será comprado)
+    KALSHI_TICKER: 'TEST-TICKER',
+    POLY_YES_ID: '109876868437950584369987384406356259939519193117253465815665152916226511121427',
     POLY_NO_ID:  '38310927461258927563020508025396887688249787380193911540547071417200646834355',
-    
-    // Deixa negativo para aceitar qualquer oportunidade simulada
-    MIN_PROFIT: -999, 
+    MIN_PROFIT: -999,
 };
 
 // --- MOCK DA API KALSHI (FALSA) ---
 const MockKalshiApi: any = {
     createOrder: async () => ({ order_id: "mock-order-123" }),
     cancelOrder: async () => { 
-        // console.log("🛡️  [Mock Kalshi] Ordens canceladas com sucesso."); 
         return true; 
     }
 };

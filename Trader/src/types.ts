@@ -1,7 +1,3 @@
-// ----------------------------------------------------------------------------
-// Enums (Padronização)
-// ----------------------------------------------------------------------------
-
 export enum OrderSide {
     BUY = 'buy',
     SELL = 'sell'
@@ -21,80 +17,69 @@ export enum OrderStatus {
     REJECTED = 'rejected'
 }
 
-// ----------------------------------------------------------------------------
-// Configuração (Input do Sistema)
-// ----------------------------------------------------------------------------
-
 export interface ExchangeCredentials {
     apiKey?: string;
     apiSecret?: string;
-    // --- CAMPOS ESPECÍFICOS DO POLYMARKET ---
-    passphrase?: string;    // Necessário
-    privateKey: string;     // Obrigatório
-    funderAddress?: string; // Para contas Proxy (Email)
-    signatureType?: number; 
+    passphrase?: string;
+    privateKey: string;
+    funderAddress?: string;
+    signatureType?: number;
 }
 
-// O Objeto que define a estratégia (passado manualmente ou pelo Python)
 export interface ArbPairConfig {
-    // Kalshi (Lado Maker)
-    kalshiTicker: string;      // ex: "PRES-24-TRUMP"
-    kalshiTickSize: number;    // ex: 0.01 (Incremento mínimo de preço)
+    kalshiTicker: string;
+    kalshiTickSize: number;
 
-    // Polymarket (Lado Taker)
-    polyMarketId: string;      // ex: "0x289..." (Token ID / Asset ID)
-    polyTickSize: number;      // ex: 0.001 (Pode ser mais preciso que o Kalshi)
+    polyMarketId: string;
+    polyTickSize: number;
 
-    // Regras de Execução
-    spreadAlvo: number;        // ex: 0.03 (Lucro bruto desejado por contrato)
-    qty: number;               // ex: 10 (Quantidade de contratos a operar)
-    maxPosition: number;       // ex: 100 (Trava de segurança)
+    spreadAlvo: number;
+    qty: number;
+    maxPosition: number;
 }
 
 export interface OrderLevel {
-    price: number; 
-    size: number;  
+    price: number;
+    size: number;
 }
 
 export interface OrderBook {
     symbol: string;
-    bids: OrderLevel[]; // Compradores
-    asks: OrderLevel[]; // Vendedores
+    bids: OrderLevel[];
+    asks: OrderLevel[];
     timestamp: number;
 }
 
-// ----------------------------------------------------------------------------
+// ==========================================================================================
 // Estruturas de Execução (Ordens)
-// ----------------------------------------------------------------------------
+// ==========================================================================================
 
 export interface CreateOrderParams {
-    marketId: string;    // Ticker ou TokenID
+    marketId: string;
     side: OrderSide;
     type: OrderType;
-    amount: number;      // Quantidade de contratos
-    price?: number;      // Obrigatório para LIMIT
-    postOnly?: boolean;  // Maker flag: Garante que não vai executar a mercado (e pagar taxa)
+    amount: number;
+    price?: number;
+    postOnly?: boolean;
 }
 
 export interface Order {
-    id: string;          // ID da Exchange
+    id: string;
     marketId: string;
     side: OrderSide;
     type: OrderType;
     price?: number;
     amount: number;
     status: OrderStatus;
-    filled: number;      // Quantidade já executada
-    remaining: number;   // Quantidade sobrando
+    filled: number;
+    remaining: number;
     timestamp: number;
-    raw?: any;           // Guarda o objeto original da exchange para debug
+    raw?: any;
 }
 
-// ----------------------------------------------------------------------------
+// ==========================================================================================
 // Callbacks (Para WebSocket)
-// ----------------------------------------------------------------------------
-// Chamado quando o preço muda no Orderbook
-// bestBid/bestAsk são essenciais para calcular o spread
+// ==========================================================================================
 export type PriceUpdateCallback = (marketId: string, bestBid: number, bestAsk: number) => void;
 
 export type OrderFillCallback = (order: Order) => void;

@@ -41,13 +41,12 @@ async function main() {
                 funderAddress: process.env.POLYMARKET_FUNDER
             });
             polyExecutor = new PolymarketExecutor(polyAuth);
-            console.log("🦅 Polymarket Executor: CONECTADO (Compartilhado)");
+            console.log(" Polymarket Executor: CONECTADO (Compartilhado)");
         } catch (e: any) {
             console.error("❌ Erro Auth Poly:", e.message);
         }
     }
 
-    // 3. INICIALIZAR MOTORES (Fábrica de Robôs)
     const allPolyIds: string[] = [];
     const allKalshiTickers: string[] = [];
 
@@ -61,7 +60,6 @@ async function main() {
             polyExecutor
         );
 
-        // Registra nos mapas
         botsByKalshiTicker.set(conf.kalshiTicker, bot);
         botsByPolyToken.set(conf.polyYesId, bot);
         botsByPolyToken.set(conf.polyNoId, bot);
@@ -70,19 +68,15 @@ async function main() {
         allKalshiTickers.push(conf.kalshiTicker);
     });
 
-    // 4. CONEXÃO WEBSOCKET KALSHI (Única)
     const kStream = new KalshiStream(kAuth);
     
-    // Listas para o Roteador
     const processors: KalshiBookProcessor[] = [];
     const monitors: KalshiFillMonitor[] = [];
 
-    // Cria os componentes para cada mercado
     MARKETS.forEach(conf => {
         const bot = botsByKalshiTicker.get(conf.kalshiTicker);
         if(!bot) return;
 
-        // Processor: Atualiza Book -> Cache -> Tick
         const proc = new KalshiBookProcessor(kStream, conf.kalshiTicker);
         proc.setCallback((state) => {
             marketStateCache.set(conf.kalshiTicker, state);
@@ -90,16 +84,12 @@ async function main() {
         });
         processors.push(proc);
 
-        // Monitor: Recebe Fill -> Avisa Bot
         const mon = new KalshiFillMonitor(kStream, conf.kalshiTicker);
         mon.setCallback((fill) => bot.onFill(fill));
         monitors.push(mon);
     });
 
-    // ROTEADOR DE MENSAGENS KALSHI
     kStream.connect((msg: any) => {
-        // Distribui a mensagem para todos. 
-        // Eles têm filtro interno ("if msg.ticker != this.ticker return"), então é seguro.
         processors.forEach(p => p.processMessage(msg));
         monitors.forEach(m => m.processMessage(msg));
     });
@@ -107,10 +97,6 @@ async function main() {
     setTimeout(() => {
         console.log("📨 Inscrevendo canais Kalshi (BATCH)...");
         
-        // ❌ COMO ERA ANTES (Loop que causava erro):
-        // allKalshiTickers.forEach(t => kStream.subscribe(t));
-
-        // ✅ COMO TEM QUE SER (Uma chamada única):
         if (allKalshiTickers.length > 0) {
             kStream.subscribe(allKalshiTickers);
         }
@@ -118,33 +104,23 @@ async function main() {
     }, 2500);
 
 
-    // 5. CONEXÃO WEBSOCKET POLYMARKET (Única)
-    // Passamos a lista completa de IDs
     const pStream = new PolymarketStream(allPolyIds);
     
-    // 
     pStream.connect((tokenId: string, state: MarketState) => {
-        // 1. Atualiza o cache global com o novo preço deste token específico
         marketStateCache.set(tokenId, state);
 
-        // 2. Descobre qual robô é dono desse token
         const bot = botsByPolyToken.get(tokenId);
         
-        // 3. Roda a lógica desse robô
         if(bot) tryTickBot(bot);
     });
 
-    // 6. RENDER LOOP (Tabela Resumo)
     setInterval(() => renderSummary(), 1000);
 }
-
-// FUNÇÃO HELPER: Tenta rodar o ciclo do bot se tivermos os 3 estados necessários
 function tryTickBot(bot: BotEngine) {
     const kState = marketStateCache.get(bot.ticker);
     const pYesState = marketStateCache.get(bot.polyYesId);
     const pNoState = marketStateCache.get(bot.polyNoId);
 
-    // Só roda se tivermos dados de todos os lados
     if (kState && pYesState && pNoState) {
         bot.onTick(kState, pYesState, pNoState);
     }
@@ -185,8 +161,7 @@ function renderSummary() {
                 labelSide = "NO";
             }
         }
-
-        // --- 2. LINHA DE RESUMO ---
+        
         let statusColor = '\x1b[37m'; 
         if (s.status === '🟢 WORKING') statusColor = '\x1b[32m';
         if (s.status === '🟣 HEDGING') statusColor = '\x1b[35m';
@@ -197,10 +172,7 @@ function renderSummary() {
         const metaStr = s.minProfit.toFixed(1).padStart(4);
         const hedgeStr = `${s.pendingHedgeQty}/5`.padStart(5);
         
-        // --- MUDANÇA 1: Casas Decimais no Topo ---
-        // Kalshi (Inteiro)
         const topK = kBookSide[0] ? (kBookSide[0].price * 100).toFixed(0) + '¢' : '--';
-        // Polymarket (1 Decimal)
         const topP = pBookSide[0] ? (pBookSide[0].price * 100).toFixed(1) + '¢' : '--';
 
         let orderTxt = "--";
@@ -218,7 +190,7 @@ function renderSummary() {
             `\x1b[0m ${hedgeStr} | ${orderTxt.padEnd(15)}|`
         );
 
-        // --- 3. MINI ORDER BOOK ---
+        //  MINI ORDER BOOK ---
         if (kBookSide.length > 0 || pBookSide.length > 0) {
             console.log(`|   └─ 📊 BOOK:     \x1b[90mKALSHI BID (Qtd @ Preço)     ||      POLY ASK (Preço @ Qtd)\x1b[0m`);
             
@@ -226,7 +198,6 @@ function renderSummary() {
                 const kItem = kBookSide[i];
                 const pItem = pBookSide[i];
 
-                // Kalshi (Inteiro)
                 let kText = "          --";
                 if (kItem) {
                     const price = Math.round(kItem.price * 100);
@@ -239,10 +210,8 @@ function renderSummary() {
                     }
                 }
 
-                // --- MUDANÇA 2: Casas Decimais no Loop do Poly ---
                 let pText = "--           ";
                 if (pItem) {
-                    // toFixed(1) garante ex: "12.5" ou "12.0"
                     const price = (pItem.price * 100).toFixed(1); 
                     const size = Math.floor(pItem.size).toString().padEnd(5, ' ');
                     pText = `${price}¢ @ ${size}`;
@@ -255,25 +224,20 @@ function renderSummary() {
     });
     console.log(`===================================================================================================================`);
 }
-// =============================================================================
-// 🛡️ SISTEMA DE SEGURANÇA (KILL SWITCH)
-// =============================================================================
 let isShuttingDown = false;
 
 async function emergencyStop(reason: string, error?: any) {
-    if (isShuttingDown) return; // Evita rodar duas vezes
+    if (isShuttingDown) return; 
     isShuttingDown = true;
 
     console.log(`\n\n🛑 PARADA DETECTADA: ${reason}`);
     if (error) console.error("   Detalhe do Erro:", error);
 
-    console.log("🧹 Iniciando protocolo de cancelamento em massa...");
+    console.log("🧹 Iniciando  cancelamento em massa...");
 
-    // Coleta todas as promessas de cancelamento
     const cancelPromises: Promise<void>[] = [];
     
     botsByKalshiTicker.forEach((bot) => {
-        // Só tenta cancelar se tiver ordem ativa
         const s = bot.getState();
         if (s.activeOrderId) {
             console.log(`   -> Cancelando ordem em ${bot.ticker}...`);
@@ -287,7 +251,6 @@ async function emergencyStop(reason: string, error?: any) {
     }
 
     try {
-        // Tenta cancelar tudo em paralelo. Se demorar mais que 3s, força a saída.
         await Promise.race([
             Promise.all(cancelPromises),
             new Promise(resolve => setTimeout(resolve, 3000))
@@ -297,20 +260,16 @@ async function emergencyStop(reason: string, error?: any) {
         console.error("⚠️ Alguns cancelamentos podem ter falhado (timeout ou erro de rede).");
     }
 
-    console.log("👋 Encerrando processo. Até logo!");
+    console.log("Encerrando processo.");
     process.exit(1);
 }
 
-// 1. Captura Ctrl+C (Manual)
 process.on('SIGINT', () => emergencyStop('SIGINT (Usuário cancelou)'));
 
-// 2. Captura Kill Command (Docker/System)
 process.on('SIGTERM', () => emergencyStop('SIGTERM (Sistema encerrou)'));
 
-// 3. Captura Erros de Código (Bugs não tratados)
 process.on('uncaughtException', (err) => emergencyStop('CRASH (Erro no código)', err));
 
-// 4. Captura Erros de Promessas (Async falhou)
 process.on('unhandledRejection', (reason) => emergencyStop('CRASH (Promise Rejection)', reason));
 
 main().catch(console.error);

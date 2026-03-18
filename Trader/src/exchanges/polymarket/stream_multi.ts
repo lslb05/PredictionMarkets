@@ -17,16 +17,13 @@ export interface MarketState {
 export class PolymarketStream {
     private ws: WebSocket | null = null;
     
-    // Livros separados por Asset ID
-    private books = new Map<string, {
+      private books = new Map<string, {
         bids: Map<number, number>,
         asks: Map<number, number>
     }>();
 
     private assetIds: string[];
-    // Removido: private mainTokenId: string;
-    
-    // Callback agora recebe (token, state)
+  
     private onUpdate: ((tokenId: string, state: MarketState) => void) | null = null;
 
     constructor(assetIds: string | string[]) {
@@ -65,8 +62,7 @@ export class PolymarketStream {
     private processEvent(event: any) {
         let targetId: string | null = null;
 
-        // 1. SNAPSHOT
-        if (event.event_type === "book") {
+          if (event.event_type === "book") {
             if (!event.asset_id || !this.books.has(event.asset_id)) return;
             targetId = event.asset_id;
 
@@ -78,11 +74,11 @@ export class PolymarketStream {
             event.asks.forEach((x: any) => book.asks.set(parseFloat(x.price), parseFloat(x.size)));
         }
 
-        // 2. DELTA
+    
         else if (event.event_type === "price_change") {
             const changes = event.price_changes || [];
             
-            // Agrupamos por ID para emitir update correto
+    
             const touchedIds = new Set<string>();
 
             for (const change of changes) {
@@ -99,12 +95,11 @@ export class PolymarketStream {
                 touchedIds.add(change.asset_id);
             }
 
-            // Emite updates para cada ID alterado
+    
             touchedIds.forEach(id => this.emitState(id));
             return;
         }
 
-        // Se foi snapshot, emite direto
         if (targetId) this.emitState(targetId);
     }
 

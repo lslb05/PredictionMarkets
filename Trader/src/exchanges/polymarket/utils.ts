@@ -8,7 +8,6 @@ export function mapMarketToUnified(event: any, market: any, options: { useQuesti
 
     const outcomes: MarketOutcome[] = [];
 
-    // Polymarket Gamma often returns 'outcomes' and 'outcomePrices' as stringified JSON keys.
     let outcomeLabels: string[] = [];
     let outcomePrices: string[] = [];
 
@@ -19,21 +18,18 @@ export function mapMarketToUnified(event: any, market: any, options: { useQuesti
         console.warn(`Error parsing outcomes for market ${market.id}:`, e);
     }
 
-    // Extract CLOB token IDs for granular operations
     let clobTokenIds: string[] = [];
     try {
         clobTokenIds = typeof market.clobTokenIds === 'string' ? JSON.parse(market.clobTokenIds) : (market.clobTokenIds || []);
     } catch (e) {
-        // console.warn(`Error parsing clobTokenIds for market ${market.id}`, e);
+    
     }
 
-    // Extract candidate/option name from market question for better outcome labels
+    
     let candidateName: string | null = null;
     if (market.groupItemTitle) {
         candidateName = market.groupItemTitle;
     } else if (market.question && options.useQuestionAsCandidateFallback) {
-        // Fallback or sometimes question is the candidate name in nested structures
-        // Only used if explicitly requested (e.g. for getMarketsBySlug)
         candidateName = market.question;
     }
 
@@ -41,7 +37,6 @@ export function mapMarketToUnified(event: any, market: any, options: { useQuesti
         outcomeLabels.forEach((label: string, index: number) => {
             const rawPrice = outcomePrices[index] || "0";
 
-            // For Yes/No markets with specific candidates, use the candidate name
             let outcomeLabel = label;
             if (candidateName && label.toLowerCase() === 'yes') {
                 outcomeLabel = candidateName;
@@ -49,20 +44,17 @@ export function mapMarketToUnified(event: any, market: any, options: { useQuesti
                 outcomeLabel = `Not ${candidateName}`;
             }
 
-            // 24h Price Change
-            // Polymarket API provides 'oneDayPriceChange' on the market object
             let priceChange = 0;
             if (index === 0 || label.toLowerCase() === 'yes' || (candidateName && label === candidateName)) {
                 priceChange = Number(market.oneDayPriceChange || 0);
             }
 
             outcomes.push({
-                id: clobTokenIds[index] || String(index), // Use CLOB Token ID as the primary ID
+                id: clobTokenIds[index] || String(index),
                 label: outcomeLabel,
                 price: parseFloat(rawPrice) || 0,
                 priceChange24h: priceChange,
                 metadata: {
-                    // clobTokenId is now the main ID, but keeping it in metadata for backward compat if needed
                     clobTokenId: clobTokenIds[index]
                 }
             });
