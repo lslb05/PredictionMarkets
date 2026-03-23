@@ -36,3 +36,4 @@ class KalshiAuth:
             "KALSHI-ACCESS-SIGNATURE": sig_b64,
             "KALSHI-ACCESS-TIMESTAMP": timestamp_str,
             "Content-Type": "application/json"}
+    
